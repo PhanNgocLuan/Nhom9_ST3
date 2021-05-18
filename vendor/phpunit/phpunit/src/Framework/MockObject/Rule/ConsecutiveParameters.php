@@ -66,8 +66,8 @@ final class ConsecutiveParameters implements ParametersRule
     }
 
     /**
-     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
      * @throws ExpectationFailedException
+     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
      */
     public function apply(BaseInvocation $invocation): void
     {
@@ -93,20 +93,14 @@ final class ConsecutiveParameters implements ParametersRule
      *
      * @param int $callIndex
      *
-     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
      * @throws ExpectationFailedException
+     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
      */
     private function verifyInvocation(BaseInvocation $invocation, $callIndex): void
     {
         if (!isset($this->parameterGroups[$callIndex])) {
             // no parameter assertion for this call index
             return;
-        }
-
-        if ($invocation === null) {
-            throw new ExpectationFailedException(
-                'Mocked method does not exist.'
-            );
         }
 
         $parameters = $this->parameterGroups[$callIndex];

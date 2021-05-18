@@ -107,7 +107,13 @@ class Str
      */
     public static function before($subject, $search)
     {
-        return $search === '' ? $subject : explode($search, $subject)[0];
+        if ($search === '') {
+            return $subject;
+        }
+
+        $result = strstr($subject, (string) $search, true);
+
+        return $result === false ? $subject : $result;
     }
 
     /**
@@ -524,10 +530,6 @@ class Str
      */
     public static function replaceLast($search, $replace, $subject)
     {
-        if ($search === '') {
-            return $subject;
-        }
-
         $position = strrpos($subject, $search);
 
         if ($position !== false) {

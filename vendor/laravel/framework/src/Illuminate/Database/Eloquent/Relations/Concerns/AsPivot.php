@@ -88,7 +88,7 @@ trait AsPivot
      * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    protected function setKeysForSaveQuery(Builder $query)
+    protected function setKeysForSaveQuery($query)
     {
         if (isset($this->attributes[$this->getKeyName()])) {
             return parent::setKeysForSaveQuery($query);
@@ -286,8 +286,6 @@ trait AsPivot
      */
     protected function newQueryForCollectionRestoration(array $ids)
     {
-        $ids = array_values($ids);
-
         if (! Str::contains($ids[0], ':')) {
             return parent::newQueryForRestoration($ids);
         }

@@ -12,7 +12,6 @@ namespace PHPUnit\Framework\MockObject;
 use function sprintf;
 use function strtolower;
 use Exception;
-use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\MockObject\Builder\InvocationMocker;
 use PHPUnit\Framework\MockObject\Rule\InvocationOrder;
 use Throwable;
@@ -111,9 +110,8 @@ final class InvocationHandler
     }
 
     /**
+     * @throws RuntimeException
      * @throws Exception
-     *
-     * @return mixed|void
      */
     public function invoke(Invocation $invocation)
     {
@@ -145,7 +143,7 @@ final class InvocationHandler
         }
 
         if (!$this->returnValueGeneration) {
-            $exception = new ExpectationFailedException(
+            $exception = new RuntimeException(
                 sprintf(
                     'Return value inference disabled and no expectation set up for %s::%s()',
                     $invocation->getClassName(),
@@ -177,7 +175,7 @@ final class InvocationHandler
     }
 
     /**
-     * @throws \PHPUnit\Framework\ExpectationFailedException
+     * @throws Throwable
      */
     public function verify(): void
     {

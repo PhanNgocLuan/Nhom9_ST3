@@ -105,8 +105,8 @@ final class Matcher
 
     /**
      * @throws Exception
-     * @throws ExpectationFailedException
      * @throws RuntimeException
+     * @throws ExpectationFailedException
      */
     public function invoked(Invocation $invocation)
     {
@@ -160,9 +160,9 @@ final class Matcher
     }
 
     /**
-     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
-     * @throws ExpectationFailedException
      * @throws RuntimeException
+     * @throws ExpectationFailedException
+     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
      */
     public function matches(Invocation $invocation): bool
     {
@@ -214,9 +214,9 @@ final class Matcher
     }
 
     /**
-     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
-     * @throws ExpectationFailedException
      * @throws RuntimeException
+     * @throws ExpectationFailedException
+     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
      */
     public function verify(): void
     {

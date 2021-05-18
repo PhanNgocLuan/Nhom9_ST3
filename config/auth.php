@@ -46,6 +46,15 @@ return [
             'provider' => 'users',
             'hash' => false,
         ],
+        /*code của mình dưới đây vì hiện tại chưa có api nên thôi chỉ session*/
+        'account_admin' =>[
+            'driver' => 'session',
+            'provider' => 'accounts',
+        ],
+        'account_customer' =>[
+            'driver' => 'session',
+            'provider' => 'accounts',
+        ],
     ],
 
     /*
@@ -68,13 +77,18 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\User::class,
+            'model' => App\Models\User::class,
         ],
 
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',
         // ],
+
+        'accounts' =>[
+            'driver' => 'eloquent',
+            'model' => App\Models\Account::class,
+        ],
     ],
 
     /*

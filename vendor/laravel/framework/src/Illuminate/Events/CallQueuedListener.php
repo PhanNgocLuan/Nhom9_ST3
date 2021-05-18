@@ -2,6 +2,7 @@
 
 namespace Illuminate\Events;
 
+use Illuminate\Bus\Queueable;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -9,7 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 
 class CallQueuedListener implements ShouldQueue
 {
-    use InteractsWithQueue;
+    use InteractsWithQueue, Queueable;
 
     /**
      * The listener class name.
@@ -40,18 +41,18 @@ class CallQueuedListener implements ShouldQueue
     public $tries;
 
     /**
-     * The number of seconds to wait before retrying the job.
+     * The number of seconds to wait before retrying a job that encountered an uncaught exception.
      *
      * @var int
      */
-    public $retryAfter;
+    public $backoff;
 
     /**
      * The timestamp indicating when the job should timeout.
      *
      * @var int
      */
-    public $timeoutAt;
+    public $retryUntil;
 
     /**
      * The number of seconds the job can run before timing out.
@@ -89,15 +90,17 @@ class CallQueuedListener implements ShouldQueue
             $this->job, $container->make($this->class)
         );
 
-        $handler->{$this->method}(...array_values($this->data));
+        call_user_func_array(
+            [$handler, $this->method], $this->data
+        );
     }
 
     /**
      * Set the job instance of the given class if necessary.
      *
      * @param  \Illuminate\Contracts\Queue\Job  $job
-     * @param  object  $instance
-     * @return object
+     * @param  mixed  $instance
+     * @return mixed
      */
     protected function setJobInstanceIfNecessary(Job $job, $instance)
     {
@@ -122,10 +125,10 @@ class CallQueuedListener implements ShouldQueue
 
         $handler = Container::getInstance()->make($this->class);
 
-        $parameters = array_merge(array_values($this->data), [$e]);
+        $parameters = array_merge($this->data, [$e]);
 
         if (method_exists($handler, 'failed')) {
-            $handler->failed(...$parameters);
+            call_user_func_array([$handler, 'failed'], $parameters);
         }
     }
 

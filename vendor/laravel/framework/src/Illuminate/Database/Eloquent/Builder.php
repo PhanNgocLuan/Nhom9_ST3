@@ -7,7 +7,6 @@ use Closure;
 use Exception;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Concerns\BuildsQueries;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Pagination\Paginator;
@@ -71,7 +70,7 @@ class Builder
     /**
      * The methods that should be returned from query builder.
      *
-     * @var array
+     * @var string[]
      */
     protected $passthru = [
         'insert', 'insertOrIgnore', 'insertGetId', 'insertUsing', 'getBindings', 'toSql', 'dump', 'dd',
@@ -225,7 +224,7 @@ class Builder
     /**
      * Add a basic where clause to the query.
      *
-     * @param  \Closure|string|array|\Illuminate\Database\Query\Expression  $column
+     * @param  \Closure|string|array  $column
      * @param  mixed  $operator
      * @param  mixed  $value
      * @param  string  $boolean
@@ -247,7 +246,7 @@ class Builder
     /**
      * Add a basic where clause to the query, and return the first result.
      *
-     * @param  \Closure|string|array|\Illuminate\Database\Query\Expression  $column
+     * @param  \Closure|string|array  $column
      * @param  mixed  $operator
      * @param  mixed  $value
      * @param  string  $boolean
@@ -261,7 +260,7 @@ class Builder
     /**
      * Add an "or where" clause to the query.
      *
-     * @param  \Closure|array|string|\Illuminate\Database\Query\Expression  $column
+     * @param  \Closure|array|string  $column
      * @param  mixed  $operator
      * @param  mixed  $value
      * @return $this
@@ -278,7 +277,7 @@ class Builder
     /**
      * Add an "order by" clause for a timestamp to the query.
      *
-     * @param  string|\Illuminate\Database\Query\Expression  $column
+     * @param  string  $column
      * @return $this
      */
     public function latest($column = null)
@@ -295,7 +294,7 @@ class Builder
     /**
      * Add an "order by" clause for a timestamp to the query.
      *
-     * @param  string|\Illuminate\Database\Query\Expression  $column
+     * @param  string  $column
      * @return $this
      */
     public function oldest($column = null)
@@ -439,7 +438,7 @@ class Builder
      * @param  array  $values
      * @return \Illuminate\Database\Eloquent\Model|static
      */
-    public function firstOrCreate(array $attributes, array $values = [])
+    public function firstOrCreate(array $attributes = [], array $values = [])
     {
         if (! is_null($instance = $this->where($attributes)->first())) {
             return $instance;
@@ -506,13 +505,13 @@ class Builder
     /**
      * Get a single column's value from the first result of a query.
      *
-     * @param  string|\Illuminate\Database\Query\Expression  $column
+     * @param  string  $column
      * @return mixed
      */
     public function value($column)
     {
         if ($result = $this->first([$column])) {
-            return $result->{Str::afterLast($column, '.')};
+            return $result->{$column};
         }
     }
 
@@ -689,7 +688,7 @@ class Builder
     /**
      * Get an array with the values of a given column.
      *
-     * @param  string|\Illuminate\Database\Query\Expression  $column
+     * @param  string  $column
      * @param  string|null  $key
      * @return \Illuminate\Support\Collection
      */
@@ -791,7 +790,7 @@ class Builder
     }
 
     /**
-     * Update a record in the database.
+     * Update records in the database.
      *
      * @param  array  $values
      * @return int
@@ -802,9 +801,38 @@ class Builder
     }
 
     /**
+     * Insert new records or update the existing ones.
+     *
+     * @param  array  $values
+     * @param  array|string  $uniqueBy
+     * @param  array|null  $update
+     * @return int
+     */
+    public function upsert(array $values, $uniqueBy, $update = null)
+    {
+        if (empty($values)) {
+            return 0;
+        }
+
+        if (! is_array(reset($values))) {
+            $values = [$values];
+        }
+
+        if (is_null($update)) {
+            $update = array_keys(reset($values));
+        }
+
+        return $this->toBase()->upsert(
+            $this->addTimestampsToUpsertValues($values),
+            $uniqueBy,
+            $this->addUpdatedAtToUpsertColumns($update)
+        );
+    }
+
+    /**
      * Increment a column's value by a given amount.
      *
-     * @param  string|\Illuminate\Database\Query\Expression  $column
+     * @param  string  $column
      * @param  float|int  $amount
      * @param  array  $extra
      * @return int
@@ -819,7 +847,7 @@ class Builder
     /**
      * Decrement a column's value by a given amount.
      *
-     * @param  string|\Illuminate\Database\Query\Expression  $column
+     * @param  string  $column
      * @param  float|int  $amount
      * @param  array  $extra
      * @return int
@@ -863,7 +891,58 @@ class Builder
     }
 
     /**
-     * Delete a record from the database.
+     * Add timestamps to the inserted values.
+     *
+     * @param  array  $values
+     * @return array
+     */
+    protected function addTimestampsToUpsertValues(array $values)
+    {
+        if (! $this->model->usesTimestamps()) {
+            return $values;
+        }
+
+        $timestamp = $this->model->freshTimestampString();
+
+        $columns = array_filter([
+            $this->model->getCreatedAtColumn(),
+            $this->model->getUpdatedAtColumn(),
+        ]);
+
+        foreach ($columns as $column) {
+            foreach ($values as &$row) {
+                $row = array_merge([$column => $timestamp], $row);
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * Add the "updated at" column to the updated columns.
+     *
+     * @param  array  $update
+     * @return array
+     */
+    protected function addUpdatedAtToUpsertColumns(array $update)
+    {
+        if (! $this->model->usesTimestamps()) {
+            return $update;
+        }
+
+        $column = $this->model->getUpdatedAtColumn();
+
+        if (! is_null($column) &&
+            ! array_key_exists($column, $update) &&
+            ! in_array($column, $update)) {
+            $update[] = $column;
+        }
+
+        return $update;
+    }
+
+    /**
+     * Delete records from the database.
      *
      * @return mixed
      */
@@ -1084,12 +1163,17 @@ class Builder
     /**
      * Set the relationships that should be eager loaded.
      *
-     * @param  mixed  $relations
+     * @param  string|array  $relations
+     * @param  string|\Closure|null  $callback
      * @return $this
      */
-    public function with($relations)
+    public function with($relations, $callback = null)
     {
-        $eagerLoad = $this->parseWithRelations(is_string($relations) ? func_get_args() : $relations);
+        if ($callback instanceof Closure) {
+            $eagerLoad = $this->parseWithRelations([$relations => $callback]);
+        } else {
+            $eagerLoad = $this->parseWithRelations(is_string($relations) ? func_get_args() : $relations);
+        }
 
         $this->eagerLoad = array_merge($this->eagerLoad, $eagerLoad);
 
@@ -1168,15 +1252,7 @@ class Builder
     protected function createSelectWithConstraint($name)
     {
         return [explode(':', $name)[0], static function ($query) use ($name) {
-            $query->select(array_map(static function ($column) use ($query) {
-                if (Str::contains($column, '.')) {
-                    return $column;
-                }
-
-                return $query instanceof BelongsToMany
-                        ? $query->getRelated()->getTable().'.'.$column
-                        : $column;
-            }, explode(',', explode(':', $name)[1])));
+            $query->select(explode(',', explode(':', $name)[1]));
         }];
     }
 
@@ -1314,7 +1390,7 @@ class Builder
     /**
      * Qualify the given column name by the model's table.
      *
-     * @param  string|\Illuminate\Database\Query\Expression  $column
+     * @param  string  $column
      * @return string
      */
     public function qualifyColumn($column)
@@ -1405,13 +1481,11 @@ class Builder
         }
 
         if (static::hasGlobalMacro($method)) {
-            $callable = static::$macros[$method];
-
-            if ($callable instanceof Closure) {
-                $callable = $callable->bindTo($this, static::class);
+            if (static::$macros[$method] instanceof Closure) {
+                return call_user_func_array(static::$macros[$method]->bindTo($this, static::class), $parameters);
             }
 
-            return $callable(...$parameters);
+            return call_user_func_array(static::$macros[$method], $parameters);
         }
 
         if ($this->hasNamedScope($method)) {
@@ -1452,13 +1526,11 @@ class Builder
             static::throwBadMethodCallException($method);
         }
 
-        $callable = static::$macros[$method];
-
-        if ($callable instanceof Closure) {
-            $callable = $callable->bindTo(null, static::class);
+        if (static::$macros[$method] instanceof Closure) {
+            return call_user_func_array(Closure::bind(static::$macros[$method], null, static::class), $parameters);
         }
 
-        return $callable(...$parameters);
+        return call_user_func_array(static::$macros[$method], $parameters);
     }
 
     /**
